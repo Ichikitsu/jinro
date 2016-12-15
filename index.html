@@ -4,8 +4,12 @@
   <meta charset="UTF-8">
   <title>人狼チャット</title>
   <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.5.1/jquery.min.js"></script>
-  <script src="./socket.io/socket.io.js"></script>
+  <!-- <script src="/socket.io/socket.io.js"></script> -->
   <script type="text/javascript">
+	if (typeof jQuery != 'undefined') {
+	  // jQuery is loaded => print the version
+	  alert(jQuery.fn.jquery);
+	}
   var roomvalue="";
 	var s = io.connect('http://jinrochat.herokuapp.com'); //リモート
 	//var s = io.connect('http://localhost:3000'); //ローカル
