@@ -15,7 +15,7 @@ if (typeof jQuery != 'undefined') {
   alert(jQuery.fn.jquery);
 }
   var roomvalue="";
-	var s = io.connect('http://jinrochat.herokuapp.com'); //リモート
+	var s = io.connect(); //リモート
 	//var s = io.connect('http://localhost:3000'); //ローカル
 	var islogin = 0; //部屋にログインしているかどうか 0 or 1
 	var yourname="";
