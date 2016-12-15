@@ -1,16 +1,22 @@
 var http = require("http");
 var socketio = require("socket.io");
-var fs = require("fs");
+//var fs = require("fs");
 
-var server = http.createServer(function(req, res) {
+//var server = http.createServer(function(req, res) {
      //res.writeHead(200, {"Content-Type":"text/html"});
      //var output = fs.readFileSync("./index.html", "utf-8");
      //res.end(output);
-	res.writeHead(200, {'Content-Type': 'text/plain'}); //レスポンスヘッダーに書き込み
-    res.write('Hello Worlder\n'); // レスポンスボディに「Hello World」を書き込み
-    res.end(); // レスポンス送信を完了する
-}).listen(process.env.VMC_APP_PORT || 3000);
-var io = socketio.listen(server);
+//}).listen(process.env.VMC_APP_PORT || 3000);
+var http = require('http'); //httpモジュール呼び出し
+var server = http.createServer(function (request, response) {
+    // リクエストを受けると以下のレスポンスを送信する
+    response.writeHead(200, {'Content-Type': 'text/plain'}); //レスポンスヘッダーに書き込み
+    response.write('Hello Worlder\n'); // レスポンスボディに「Hello World」を書き込み
+    response.end(); // レスポンス送信を完了する
+});
+server.listen(process.env.PORT || 3000);
+
+//var io = socketio.listen(server);
 //io.set('heartbeat interval', 5000);
 //io.set('heartbeat timeout', 15000);
 console.log("aaaa");
@@ -28,7 +34,7 @@ var gamerole={};//ゲームの情報を格納。
 //　　　　　}で格納
 
 
-
+/*
 io.sockets.on("connection", function (socket) { //Socket開始
 	if(!userRoom[socket.id]){
 		socket.join("notjoinroom");
@@ -634,4 +640,4 @@ function judge(wolf,fox,man){
 		judgereturn={end:false, emdmsg:""};
 	}
 	return judgereturn;
-}
+}*/
