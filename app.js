@@ -1,23 +1,15 @@
 var http = require("http");
 var socketio = require("socket.io");
 var fs = require("fs");
-//ver
+
 var server = http.createServer(function(req, res) {
      res.writeHead(200, {"Content-Type":"text/html"});
      var output = fs.readFileSync("./index.html", "utf-8");
      res.end(output);
 }).listen(process.env.PORT || 3000);
-//var server = http.createServer(function (request, response) {
-//    // リクエストを受けると以下のレスポンスを送信する
-//    response.writeHead(200, {'Content-Type': 'text/html'}); //レスポンスヘッダーに書き込み
-//    var output=fs.readFileSync("./index.html","utf-8"); // レスポンスボディに「Hello World」を書き込み
-//    response.end(output); // レスポンス送信を完了する
-//});
 var io = socketio.listen(server);
-
-//io.set('heartbeat interval', 5000);
-//io.set('heartbeat timeout', 15000);
-console.log("aaaa");
+io.set('heartbeat interval', 5000);
+io.set('heartbeat timeout', 15000);
 var userHash = {};//接続しているclientのHash:名前で格納
 var gameHash = {};//ゲーム開始時の、ルーム名:{clientのHash:名前} で格納userHashが接続が切れた際に消すため
 var userRoom = {};//接続しているclientのHash:ルーム名で格納
