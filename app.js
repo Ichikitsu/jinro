@@ -7,7 +7,6 @@ var socketio = require("socket.io");
      //var output = fs.readFileSync("./index.html", "utf-8");
      //res.end(output);
 //}).listen(process.env.VMC_APP_PORT || 3000);
-var http = require('http'); //httpモジュール呼び出し
 var server = http.createServer(function (request, response) {
     // リクエストを受けると以下のレスポンスを送信する
     response.writeHead(200, {'Content-Type': 'text/plain'}); //レスポンスヘッダーに書き込み
