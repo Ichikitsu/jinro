@@ -15,7 +15,7 @@ var server = http.createServer(function (request, response) {
 });
 server.listen(process.env.PORT || 3000);
 
-//var io = socketio.listen(server);
+var io = socketio.listen(server);
 //io.set('heartbeat interval', 5000);
 //io.set('heartbeat timeout', 15000);
 console.log("aaaa");
