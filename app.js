@@ -13,9 +13,9 @@ var server = http.createServer(function (request, response) {
     var output=fs.readFileSync("./index.html","utf-8"); // レスポンスボディに「Hello World」を書き込み
     response.end(output); // レスポンス送信を完了する
 });
+var io = socketio.listen(server);
 server.listen(process.env.PORT || 3000);
 
-var io = socketio.listen(server);
 //io.set('heartbeat interval', 5000);
 //io.set('heartbeat timeout', 15000);
 console.log("aaaa");
@@ -33,7 +33,7 @@ var gamerole={};//ゲームの情報を格納。
 //　　　　　}で格納
 
 
-/*
+
 io.sockets.on("connection", function (socket) { //Socket開始
 	if(!userRoom[socket.id]){
 		socket.join("notjoinroom");
@@ -639,4 +639,4 @@ function judge(wolf,fox,man){
 		judgereturn={end:false, emdmsg:""};
 	}
 	return judgereturn;
-}*/
+}
