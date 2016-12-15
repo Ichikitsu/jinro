@@ -2,19 +2,18 @@ var http = require("http");
 var socketio = require("socket.io");
 var fs = require("fs");
 
-//var server = http.createServer(function(req, res) {
-     //res.writeHead(200, {"Content-Type":"text/html"});
-     //var output = fs.readFileSync("./index.html", "utf-8");
-     //res.end(output);
-//}).listen(process.env.VMC_APP_PORT || 3000);
-var server = http.createServer(function (request, response) {
-    // リクエストを受けると以下のレスポンスを送信する
-    response.writeHead(200, {'Content-Type': 'text/html'}); //レスポンスヘッダーに書き込み
-    var output=fs.readFileSync("./index.html","utf-8"); // レスポンスボディに「Hello World」を書き込み
-    response.end(output); // レスポンス送信を完了する
-});
+var server = http.createServer(function(req, res) {
+     res.writeHead(200, {"Content-Type":"text/html"});
+     var output = fs.readFileSync("./index.html", "utf-8");
+     res.end(output);
+}).listen(process.env.PORT || 3000);
+//var server = http.createServer(function (request, response) {
+//    // リクエストを受けると以下のレスポンスを送信する
+//    response.writeHead(200, {'Content-Type': 'text/html'}); //レスポンスヘッダーに書き込み
+//    var output=fs.readFileSync("./index.html","utf-8"); // レスポンスボディに「Hello World」を書き込み
+//    response.end(output); // レスポンス送信を完了する
+//});
 var io = socketio.listen(server);
-server.listen(process.env.PORT || 3000);
 
 //io.set('heartbeat interval', 5000);
 //io.set('heartbeat timeout', 15000);
