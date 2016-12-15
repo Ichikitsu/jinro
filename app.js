@@ -10,7 +10,8 @@ var server = http.createServer(function(req, res) {
 var io = socketio.listen(server);
 io.set('heartbeat interval', 5000);
 io.set('heartbeat timeout', 15000);
-var userHash = {};//接続しているclientのHash:名前で格納
+console.log("aaaa");
+/*var userHash = {};//接続しているclientのHash:名前で格納
 var gameHash = {};//ゲーム開始時の、ルーム名:{clientのHash:名前} で格納userHashが接続が切れた際に消すため
 var userRoom = {};//接続しているclientのHash:ルーム名で格納
 var adminHash = {};//ルームマスターのHash:名前で格納
@@ -630,4 +631,4 @@ function judge(wolf,fox,man){
 		judgereturn={end:false, emdmsg:""};
 	}
 	return judgereturn;
-}
+}*/
