@@ -569,14 +569,14 @@ var toDoubleDigits = function(num) {
  
 // 日付をYYYY/MM/DD HH:DD:MI:SS形式で取得
 var genedate = function() {
-  var date = new Date();
-  var yyyy = date.getFullYear();
-  var mm = toDoubleDigits(date.getMonth() + 1);
-  var dd = toDoubleDigits(date.getDate());
-  var hh = toDoubleDigits(date.getHours());
-  var mi = toDoubleDigits(date.getMinutes());
-  var ss = toDoubleDigits(date.getSeconds());
-  return yyyy + '/' + mm + '/' + dd + ' ' + hh + ':' + mi + ":" + ss;
+  const date = new Date();
+  const yyyy = date.getFullYear();
+  const mm = toDoubleDigits(date.getMonth() + 1);
+  const dd = toDoubleDigits(date.getDate());
+  const hh = toDoubleDigits(date.getHours());
+  const mi = toDoubleDigits(date.getMinutes());
+  const ss = toDoubleDigits(date.getSeconds());
+  return `${yyyy}/${mm}/${dd} ${hh}:${mi}:${ss}`;
 };
 
 //オブジェクト系関数
