@@ -39,7 +39,7 @@ io.sockets.on('connection', (socket) => { // Socket開始
 	// roomに入室
   socket.on('connected', (usr) => {
 		// socketの名前を受信。htmlのタグ要素と改行、スペースを消す
-    const socketsname = sanitaize(usr.sendmsg,1);
+    const socketsname = sanitize(usr.sendmsg,1);
     if (!in_array(usr.roomname, RoomList)) { // RoomList配列にない名前はNG
       var msg = '該当する部屋は存在しません。';
       socket.emit('errmsg', { sendmsg: msg, issys: 1 });
@@ -220,7 +220,7 @@ io.sockets.on('connection', (socket) => { // Socket開始
 
     // 受信したメッセージをルームに送信 人狼ルーム、狐ルームとかに分けたほうがいいのでは？
   socket.on('C_to_S_message', (data) => {
-    const msg = sanitaize(data.sendmsg,0);
+    const msg = sanitize(data.sendmsg,0);
     if (gamerole[userRoom[socket.id]]) { // ゲーム開始時
       if (of_array(socket.id, gamerole[userRoom[socket.id]].member)) { // 発言者がゲームにいる場合
         if (gamerole[userRoom[socket.id]].member[socket.id].live) { // 発言者が生きている場合
@@ -624,10 +624,10 @@ function judge(wolf, fox, man) {
   return judgereturn;
 }
 
-function sanitaize(str,space) { //サニタイズ 第二引数にdefinedされたモノを入れるとスペースも消す
+function sanitize(str,space) { //サニタイズ 第二引数にdefinedされたモノを入れるとスペースも消す
   if(space){
     return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/\r?\n/g, "").replace(/\s+/g,"");
-	}else{
-		return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/\r?\n/g, "");
-	}
+  }else{
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/\r?\n/g, "");
+  }
  }
