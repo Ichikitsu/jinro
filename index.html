@@ -7,254 +7,260 @@
   <script src="/socket.io/socket.io.js"></script>
   <script type="text/javascript">
   var roomvalue="";
-	var s = io.connect(); //リモート
-	//var s = io.connect('http://localhost:3000'); //ローカル
-	var islogin = 0; //部屋にログインしているかどうか 0 or 1
-	var yourname="";//名前
-	var yourrole="";//役職
-	var state={ //クライアントの生死と役割(roleがかぶってるし使ってない)
-		live:true,
-		role:"",
-	};
-	var roles={ //表示を日本語に直す
-		werewolf:"人狼",
-		madman:"狂人",
-		fox:"妖狐",
-		seer:"占い師",
-		medium:"霊能者",
-		hunter:"狩人",
-		villager:"村人"
-	};
-	var roletaking={ //チャットの名前
-		werewolf:"人狼チャット",
-		madman:"狂人の独り言",
-		fox:"妖狐チャット",
-		seer:"占い師の独り言",
-		medium:"霊能者の独り言",
-		hunter:"狩人の独り言",
-		villager:"村人の独り言",
-		toall:"全体チャット"
-	};
-	var roleaction={ //役職実行時の表示
-		werewolf:"噛む相手を選んでください",
-		madman:"",
-		fox:"",
-		seer:"占う相手を選んでください",
-		medium:"霊能結果",
-		hunter:"守る人物を選んでください",
-		villager:""
-	};
+  var s = io.connect(); //リモート
+  //var s = io.connect('http://localhost:3000'); //ローカル
+  var islogin = 0; //部屋にログインしているかどうか 0 or 1
+  var yourname="";//名前
+  var yourrole="";//役職
+  var state={ //クライアントの生死と役割(roleがかぶってるし使ってない)
+    live:true,
+    role:"",
+  };
+  var roles={ //表示を日本語に直す
+    werewolf:"人狼",
+    madman:"狂人",
+    fox:"妖狐",
+    seer:"占い師",
+    medium:"霊能者",
+    hunter:"狩人",
+    villager:"村人"
+  };
+  var roletaking={ //チャットの名前
+    werewolf:"人狼チャット",
+    madman:"狂人の独り言",
+    fox:"妖狐チャット",
+    seer:"占い師の独り言",
+    medium:"霊能者の独り言",
+    hunter:"狩人の独り言",
+    villager:"村人の独り言",
+    toall:"全体チャット"
+  };
+  var roleaction={ //役職実行時の表示
+    werewolf:"噛む相手を選んでください",
+    madman:"",
+    fox:"",
+    seer:"占う相手を選んでください",
+    medium:"霊能結果",
+    hunter:"守る人物を選んでください",
+    villager:""
+  };
   //サーバから受け取るイベント
-s.on("connect", function () {});  // 接続時
-s.on("disconnect", function (client) {});  // 切断時
-s.on("S_to_C_message", function (data) { //クライアントメッセージ送信時
-	addMessage(data.sendmsg,data.usrname,data.emittime,data.issys);
+  s.on("connect", function () {});  // 接続時
+  s.on("disconnect", function (client) {});  // 切断時
+  s.on("S_to_C_message", function (data) { //クライアントメッセージ送信時
+  addMessage(data.sendmsg,data.usrname,data.emittime,data.issys);
 });
 s.on("roomlists", function (data) { //serverからroomのリスト受診時
-	var puttext = "<div><form action=\"\" method=\"post\" onsubmit=\"return false;\"><input type=\"radio\" name=\"rooms\" id=\"rooms\" value=\"room1\">room1<br/><input type=\"radio\" name=\"rooms\" id=\"rooms\" value=\"room2\">room2</option><option></option></select></form></div>";
-	$("#msg_list").html(puttext);
-	islogin=0;
-	$("#subbut").val("入室する");
-	$("#message").val("");
-	$("#yourstate").html("入室するルームを選んでください。");
-	$("#memberlist").html("");
-	$('#config').css("height","0px");
-	$("#config").html("");
-	$("#daycount").html("");
-	$("#role").html("");
-	$("#roleplay").html("");
-	$("#gamemember").html("");
-	$("#sending").html("<form action='' method='post' onsubmit='return false;'>名前：<input type='text' class='text' style='' id='socketname'/><input type='submit' class='button' id='subbut' onclick='onsend();' value='入室する' /></form>");
+  var puttext = "<div><form action=\"\" method=\"post\" onsubmit=\"return false;\"><input type=\"radio\" name=\"rooms\" id=\"rooms\" value=\"room1\">room1<br/><input type=\"radio\" name=\"rooms\" id=\"rooms\" value=\"room2\">room2</option><option></option></select></form></div>";
+  $("#msg_list").html(puttext);
+  islogin=0;
+  $("#subbut").val("入室する");
+  $("#message").val("");
+  $("#yourstate").html("入室するルームを選んでください。");
+  $("#memberlist").html("");
+  $('#config').css("height","0px");
+  $("#config").html("");
+  $("#daycount").html("");
+  $("#role").html("");
+  $("#roleplay").html("");
+  $("#gamemember").html("");
+  $("#sending").html("<form action='' method='post' onsubmit='return false;'>名前：<input type='text' class='text' style='' id='socketname'/><input type='submit' class='button' id='subbut' onclick='onsend();' value='入室する' /></form>");
 });
 
 s.on("roommember", function(data){//serverからroomのメンバー受信
-	$("#memberlist").html("ルームに居るメンバー：");
-	for(memberno in data.members){
-		$("#memberlist").append(" / "+data.members[memberno]);
-	}
+  $("#memberlist").html("ルームに居るメンバー：");
+  for(memberno in data.members){
+  $("#memberlist").append(" / "+data.members[memberno]);
+  }
 });
 
 s.on("errmsg", function (data) { //Fatalなエラーメッセージ受診時
-	//中身をルーム選択に書き換え
-	var puttext = "<div class='log'><div class='sys'>"+data.sendmsg+"</div></div><div><form action=\"\" method=\"post\" onsubmit=\"return false;\"><input type=\"radio\" name=\"rooms\" id=\"rooms\" value=\"room1\">room1<br/><input type=\"radio\" name=\"rooms\" id=\"rooms\" value=\"room2\">room2</option><option></option></select></form></div>";
-	$("#msg_list").html(puttext);
-	islogin=0;
-	s.emit("notlogin","");
-	$("#subbut").val("入室する");
-	$("#message").val("");
-	$("#yourstate").html("入室するルームを選んでください。");
-	$("#memberlist").html("");
-	$('#config').css("height","0px");
-	$("#config").html("");
-	$("#daycount").html("");
-	$("#role").html("");
-	$("#roleplay").html("");
-	$("#gamemember").html("");
-	$("#sending").html("<form action='' method='post' onsubmit='return false;'>名前：<input type='text' class='text' style='' id='socketname'/><input type='submit' class='button' id='subbut' onclick='onsend();' value='入室する' /></form>");
+  //中身をルーム選択に書き換え
+  var puttext = "<div class='log'><div class='sys'>"+data.sendmsg+"</div></div><div><form action=\"\" method=\"post\" onsubmit=\"return false;\"><input type=\"radio\" name=\"rooms\" id=\"rooms\" value=\"room1\">room1<br/><input type=\"radio\" name=\"rooms\" id=\"rooms\" value=\"room2\">room2</option><option></option></select></form></div>";
+  $("#msg_list").html(puttext);
+  islogin=0;
+  s.emit("notlogin","");
+  $("#subbut").val("入室する");
+  $("#message").val("");
+  $("#yourstate").html("入室するルームを選んでください。");
+  $("#memberlist").html("");
+  $('#config').css("height","0px");
+  $("#config").html("");
+  $("#daycount").html("");
+  $("#role").html("");
+  $("#roleplay").html("");
+  $("#gamemember").html("");
+  $("#sending").html("<form action='' method='post' onsubmit='return false;'>名前：<input type='text' class='text' style='' id='socketname'/><input type='submit' class='button' id='subbut' onclick='onsend();' value='入室する' /></form>");
 });
 
 s.on("to_admin", function(){//管理者(GM)の場合のconfig画面を表示
 var puttext="<form action='' method='post' onsubmit='return false;'><div>人狼：<input type='number' value='1' id='werewolf' min='1' max='10' class='num'/>狂人：<input type='number' value='0' id='madman' min='0' max='5' class='num'/>妖狐：<input type='number' value='1' id='fox' min='0' max='5' class='num'/><br />占い師：<input type='number' value='1' id='seer' min='0' max='5' class='num'/>霊能者：<input type='number' value='1' id='medium' min='0' max='5' class='num'/>狩人：<input type='number' value='1' id='hunter' min='0' max='5' class='num'/><br />村人：<input type='number' value='1' id='villager' min='1' max='5' class='num'/><br />昼時間：<input type='number' value='3' id='daytime' min='1' max='15' class='num'/>分 夜時間：<input type='number' value='3' id='nighttime' min='1' max='15' class='num'/>分 <input type='checkbox' id='gmmode' /><label for='gmmode'>GMモード</label><input type='submit' class='button' id='configbutton' value='ゲームを始める' onclick='onconfig();' /></div></form>";
-	$('#config').css("height","100px");
-	$("#config").html(puttext);
+  $('#config').css("height","100px");
+  $("#config").html(puttext);
 });
 
 s.on("gamestart", function(data){//ゲームのスタート通知受信時
-	$("#role").html("役職："+roles[data.role]);
-	$("#daycount").html("1日目の夜です。");
-	yourname=data.yourname;
-	yourrole=data.role;
+  $("#role").html("役職："+roles[data.role]);
+  $("#daycount").html("1日目の夜です。");
+  yourname=data.yourname;
+  yourrole=data.role;
 });
 
 s.on("morning", function(data){//朝通知受信時
 //configがheight0になっているため見えないが、そのうち管理者だけ書き換えるようにする
-	$("#daycount").html(data.daycount+"日目の朝です。議論をしてください。");
-	$("#roleplay").html("");
-	$("#gamemember").html("ゲームにいるメンバー：");
-	$("#message").attr("disabled", false);
-	for(member in data.wholive){
-		var isliving="";
-		if(data.wholive[member]){ isliving="(生存)"; }else{ isliving="(死亡)"; }
-		$("#gamemember").append(" / "+member+isliving);
-	}
-	$("#config").html("<form action='' method='post' onsubmit='return false;'><div><input type='submit' class='button' id='ennight' value='投票時間を迎える' onclick='tovote();' /></div></form>");
+  $("#daycount").html(data.daycount+"日目の朝です。議論をしてください。");
+  $("#roleplay").html("");
+  $("#gamemember").html("ゲームにいるメンバー：");
+  $("#message").attr("disabled", false);
+  for(member in data.wholive){
+  var isliving="";
+  if(data.wholive[member]){ isliving="(生存)"; }else{ isliving="(死亡)"; }
+  $("#gamemember").append(" / "+member+isliving);
+  }
+  $("#config").html("<form action='' method='post' onsubmit='return false;'><div><input type='submit' class='button' id='ennight' value='投票時間を迎える' onclick='tovote();' /></div></form>");
 });
 
 s.on("vote", function(data){//投票時間通知
-	var yourliving=1; //後々生死を判定する変数(最初はとりあえず生かしておく)
-	var votemsg="";
-	$("#daycount").html(data.daycount+"日目の投票時間です。投票したい人を選択してください。");
-	$("#gamemember").html("ゲームにいるメンバー：");
-	$("#message").attr("disabled", true);
-	for(member in data.wholive){ //誰が生きているかのリストで回す
-		var isliving="";
-		var isdisabled="";
-		var isyou="";
-		if(data.wholive[member]){
-			isliving="(生存)"; isdisabled="";
-			if(member==yourname){ isyou="(あなた)"; isdisabled="disabled='disabled'"; }
-		}else{ isliving="(死亡)";isdisabled="disabled='disabled'"; if(member==yourname){ isyou="(あなた)"; isdisabled="disabled='disabled'"; yourliving=0; }}
-		$("#gamemember").append(" / "+member+isliving);
-		votemsg=votemsg+"<input type='radio' name='vote' value='"+member+"' id='"+member+"' "+isdisabled+"/><label for='"+member+"'>"+member+isliving+isyou+"</label>　";
-	}
-	votemsg="<form action='' method='post' onsubmit='return false;'><div>"+votemsg+"<input type='submit' class='button' id='votesubmit' value='投票' onclick='voting();' /></div></form>";
-	if(yourliving){
-		$("#roleplay").html(votemsg);
-	}
-	
-	$("#config").html("<form action='' method='post' onsubmit='return false;'><div><input type='submit' class='button' id='enmorning' value='投票を締め切る' onclick='tovoteend();' /></div></form>");
+  var yourliving=1; //後々生死を判定する変数(最初はとりあえず生かしておく)
+  var votemsg="";
+  $("#daycount").html(data.daycount+"日目の投票時間です。投票したい人を選択してください。");
+  $("#gamemember").html("ゲームにいるメンバー：");
+  $("#message").attr("disabled", true);
+  for(member in data.wholive){ //誰が生きているかのリストで回す
+  var isliving="";
+  var isdisabled="";
+  var isyou="";
+  if(data.wholive[member]){
+  isliving="(生存)"; isdisabled="";
+  if(member==yourname){ isyou="(あなた)"; isdisabled="disabled='disabled'"; }
+  }else{ isliving="(死亡)";isdisabled="disabled='disabled'"; if(member==yourname){ isyou="(あなた)"; isdisabled="disabled='disabled'"; yourliving=0; }}
+  $("#gamemember").append(" / "+member+isliving);
+  votemsg=votemsg+"<input type='radio' name='vote' value='"+member+"' id='"+member+"' "+isdisabled+"/><label for='"+member+"'>"+member+isliving+isyou+"</label>　";
+  }
+  votemsg="<form action='' method='post' onsubmit='return false;'><div>"+votemsg+"<input type='submit' class='button' id='votesubmit' value='投票' onclick='voting();' /></div></form>";
+  if(yourliving){
+  $("#roleplay").html(votemsg);
+  }
+
+  $("#config").html("<form action='' method='post' onsubmit='return false;'><div><input type='submit' class='button' id='enmorning' value='投票を締め切る' onclick='tovoteend();' /></div></form>");
 });
 
 s.on("voteend", function(data){ //投票時間終了通知
-	$("#daycount").html(data.daycount+"日目の投票時間が終了しました。");
-	$("#roleplay").html("");
-	$("#gamemember").html("ゲームにいるメンバー：");
-	$("#message").attr("disabled", true);
-	for(member in data.wholive){
-		var isliving="";
-		if(data.wholive[member]){ isliving="(生存)"; }else{ isliving="(死亡)"; }
-		$("#gamemember").append(" / "+member+isliving);
-	}
-	$("#config").html("<form action='' method='post' onsubmit='return false;'><div><input type='submit' class='button' id='enmorning' value='夜を迎える' onclick='tonight();' /></div></form>");
+  $("#daycount").html(data.daycount+"日目の投票時間が終了しました。");
+  $("#roleplay").html("");
+  $("#gamemember").html("ゲームにいるメンバー：");
+  $("#message").attr("disabled", true);
+  for(member in data.wholive){
+  var isliving="";
+  if(data.wholive[member]){ isliving="(生存)"; }else{ isliving="(死亡)"; }
+  $("#gamemember").append(" / "+member+isliving);
+  }
+  $("#config").html("<form action='' method='post' onsubmit='return false;'><div><input type='submit' class='button' id='enmorning' value='夜を迎える' onclick='tonight();' /></div></form>");
 });
 
 s.on("night", function(data){ //夜時間通知
-	var yourliving=1;
-	var rolemsg="";
-	$("#roleplay").html("");
-	$("#daycount").html(data.daycount+"日目の夜です。役職を実行してください。");
-	$("#message").attr("disabled", false);
-	$("#gamemember").html("ゲームにいるメンバー：");
-	var isrole=0;
-	for(member in data.wholive){
-		var isliving="";
-		if(data.wholive[member]){ isliving="(生存)"; }else{ isliving="(死亡)"; }
-		if(!data.wholive[member] && member==yourname){ yourliving=0; }
-		if(yourrole=="werewolf" && data.daycount!=1){//人狼は1日目役職をしない
-			if(!(yourrole==data.playerrole[member]) && data.wholive[member]){//役職が同じでなく、死んでいない
-				rolemsg=rolemsg+"<input type='radio' name='roleactto' value='"+member+"' id='"+member+"'/><label for='"+member+"'>"+member+"</label>　";
-				isrole++;
-			}
-		}else if(yourrole=="seer"){
-			if(!(member==yourname) && data.wholive[member]){//名前が同じでなく、死んでいない
-				rolemsg=rolemsg+"<input type='radio' name='roleactto' value='"+member+"' id='"+member+"'/><label for='"+member+"'>"+member+"</label>　";
-				isrole++;
-			}
-		}else if(yourrole=="hunter" && data.daycount!=1){//狩人も1日目は仕事をしない
-			if(!(member==yourname) && data.wholive[member]){//名前が同じでなく、死んでいない
-				rolemsg=rolemsg+"<input type='radio' name='roleactto' value='"+member+"' id='"+member+"'/><label for='"+member+"'>"+member+"</label>　";
-				isrole++;
-			}
-		}
-		$("#gamemember").append(" / "+member+isliving);
-	}
-	if(yourrole=="medium" && data.daycount!=1){
-		$("#msg_list").prepend("<div class='log'><div class='sys'>"+ data.mediumto +"さんの霊能結果は"+ data.medium + "です。</div></div>");
-	}
-	rolemsg=roleaction[yourrole]+"<form action='' method='post' onsubmit='return false;'><div>"+rolemsg+"<input type='submit' class='button' id='actionsubmit' value='実行' onclick='roleact();' /></div></form>";
-	if(isrole && yourliving){$("#roleplay").html(rolemsg);}
-	$("#config").html("<form action='' method='post' onsubmit='return false;'><div><input type='submit' class='button' id='enmorning' value='朝を迎える' onclick='tomorning();' /></div></form>");
+  var yourliving=1;
+  var rolemsg="";
+  $("#roleplay").html("");
+  $("#daycount").html(data.daycount+"日目の夜です。役職を実行してください。");
+  $("#message").attr("disabled", false);
+  $("#gamemember").html("ゲームにいるメンバー：");
+  var isrole=0;
+  for(member in data.wholive){
+  var isliving="";
+  if(data.wholive[member]){
+    isliving="(生存)";
+  } else {
+    isliving="(死亡)";
+  }
+  if(!data.wholive[member] && member==yourname){ yourliving=0; }
+  if(yourrole=="werewolf" && data.daycount!=1){//人狼は1日目役職をしない
+    if(!(yourrole==data.playerrole[member]) && data.wholive[member]){//役職が同じでなく、死んでいない
+      rolemsg=rolemsg+"<input type='radio' name='roleactto' value='"+member+"' id='"+member+"'/><label for='"+member+"'>"+member+"</label>　";
+      isrole++;
+    }
+  } else if(yourrole=="seer"){
+    if(!(member==yourname) && data.wholive[member]){//名前が同じでなく、死んでいない
+      rolemsg=rolemsg+"<input type='radio' name='roleactto' value='"+member+"' id='"+member+"'/><label for='"+member+"'>"+member+"</label>　";
+      isrole++;
+    }
+  }else if(yourrole=="hunter" && data.daycount!=1){//狩人も1日目は仕事をしない
+    if(!(member==yourname) && data.wholive[member]){//名前が同じでなく、死んでいない
+      rolemsg=rolemsg+"<input type='radio' name='roleactto' value='"+member+"' id='"+member+"'/><label for='"+member+"'>"+member+"</label>　";
+      isrole++;
+    }
+  }
+  $("#gamemember").append(" / "+member+isliving);
+  }
+  if(yourrole=="medium" && data.daycount!=1){
+    $("#msg_list").prepend("<div class='log'><div class='sys'>"+ data.mediumto +"さんの霊能結果は"+ data.medium + "です。</div></div>");
+  }
+  rolemsg=roleaction[yourrole]+"<form action='' method='post' onsubmit='return false;'><div>"+rolemsg+"<input type='submit' class='button' id='actionsubmit' value='実行' onclick='roleact();' /></div></form>";
+  if(isrole && yourliving){
+    $("#roleplay").html(rolemsg);
+  }
+  $("#config").html("<form action='' method='post' onsubmit='return false;'><div><input type='submit' class='button' id='enmorning' value='朝を迎える' onclick='tomorning();' /></div></form>");
 });
 
 s.on("jobcomplete", function(data){ //サーバーから役職実行完了通知が来た場合
-	var sendmsg="";
-	if(data.job=="werewolf"){ //人狼
-		sendmsg="今晩は"+data.to+"を噛みます。";
-	}else if(data.job=="seer"){ //占い師
-		sendmsg=data.to+"は"+data.result+"です。";
-	}else if(data.job=="hunter"){ //狩人
-		sendmsg="今晩は"+data.to+"を守ります。";
-	}
-	$("#roleplay").html("");
-	puttext = "<div class='log'><div class='sys'>" + sendmsg + "</div></div>";
-	$("#msg_list").prepend(puttext);
+  var sendmsg="";
+  if(data.job=="werewolf"){ //人狼
+    sendmsg="今晩は"+data.to+"を噛みます。";
+  }else if(data.job=="seer"){ //占い師
+    sendmsg=data.to+"は"+data.result+"です。";
+  }else if(data.job=="hunter"){ //狩人
+    sendmsg="今晩は"+data.to+"を守ります。";
+  }
+  $("#roleplay").html("");
+  puttext = "<div class='log'><div class='sys'>" + sendmsg + "</div></div>";
+  $("#msg_list").prepend(puttext);
 });
 
 
 function voting(){//投票を送信
-	s.emit("voting", {votefor:$("[name=vote]:checked").val()});
+  s.emit("voting", {votefor:$("[name=vote]:checked").val()});
 }
 function roleact(){//役職実行を送信
-	s.emit("roleaction", {to:$("[name=roleactto]:checked").val()});
+  s.emit("roleaction", {to:$("[name=roleactto]:checked").val()});
 }
 
 //管理者が時間を変更させた場合の処理
 function tomorning(){//朝にする
-	s.emit("enmorning", "");
+  s.emit("enmorning", "");
 }
 function tovote(){//投票時間にする
-	s.emit("envote", "");
+  s.emit("envote", "");
 }
 function tovoteend(){
-	s.emit("envoteend", "");
+  s.emit("envoteend", "");
 }
 function tonight(){
-	s.emit("ennight", "");
+  s.emit("ennight", "");
 }
 
   //メッセージか入室処理かを判断 ここは最初に作ったので改善の余地が多いにあり
 function onsend(){
-	var lmsg="";
-	roomvalue = $("input[name=rooms]:checked").val();
-	if(islogin==1){ //入室している場合
-		lmsg=$("#message").val();
-		sendMessage(lmsg);
-	}else{ //入室していない場合、入室をする
-		islogin=1;
-		lmsg=$("#socketname").val();
-		$("#sending").html("<form action='' method='post' onsubmit='return false;'><input type='text' class='text' style='width:80%' id='message'/><input type='submit' class='button' id='subbut' onclick='onsend();' value='発言する' />");
-		$("#msg_list").html(""); //ボタンとテキストボックス、ユーザー名を変える
-		$("#yourstate").html("<div class='yourname'>ログイン中："+lmsg+"さん</div><div class='roomname'>/参加中のルーム："+roomvalue+"</div>");
-		s.emit("connected", {sendmsg:lmsg,roomname:roomvalue}); //ルームネーム、ルームパスは固定
-	}
+  var lmsg="";
+  roomvalue = $("input[name=rooms]:checked").val();
+  if(islogin==1){ //入室している場合
+    lmsg=$("#message").val();
+    sendMessage(lmsg);
+  }else{ //入室していない場合、入室をする
+    islogin=1;
+    lmsg=$("#socketname").val();
+    $("#sending").html("<form action='' method='post' onsubmit='return false;'><input type='text' class='text' style='width:80%' id='message'/><input type='submit' class='button' id='subbut' onclick='onsend();' value='発言する' />");
+    $("#msg_list").html(""); //ボタンとテキストボックス、ユーザー名を変える
+    $("#yourstate").html("<div class='yourname'>ログイン中："+lmsg+"さん</div><div class='roomname'>/参加中のルーム："+roomvalue+"</div>");
+    s.emit("connected", {sendmsg:lmsg,roomname:roomvalue}); //ルームネーム、ルームパスは固定
+  }
 }
 
 //ルームマスターの配役が決まったら送信
 function onconfig(){
-	var isgmmode=$('#gmmode').is(':checked');
-	s.emit("config", {werewolf:$("#werewolf").val(),madman:$("#madman").val(),fox:$("#fox").val(),seer:$("#seer").val(),medium:$("#medium").val(),hunter:$("#hunter").val(),villager:$("#villager").val(),daytime:$("#daytime").val(),nighttime:$("#nighttime").val(),gmmode:isgmmode});
+  var isgmmode=$('#gmmode').is(':checked');
+  s.emit("config", {werewolf:$("#werewolf").val(),madman:$("#madman").val(),fox:$("#fox").val(),seer:$("#seer").val(),medium:$("#medium").val(),hunter:$("#hunter").val(),villager:$("#villager").val(),daytime:$("#daytime").val(),nighttime:$("#nighttime").val(),gmmode:isgmmode});
 }
-  
+
   //文章を送る
   function sendMessage(msg) {
     //var msg = $("#message").val(); //取得
@@ -263,64 +269,64 @@ function onconfig(){
   }
   //jqueryでメッセージを追加
 function addMessage (sendmsg,usrname,emittime,issys) {
-	var puttext = "";
-	if(usrname&&!issys){ //システムメッセージでなく、発言元が人間であれば通常メッセージ
-		puttext = "<div class='log'><div class='msg'>" + usrname + "さん："+ sendmsg + "</div><div class='date'>"+emittime+"</div></div>";
-		$("#msg_list").prepend(puttext);
-	}else if(issys==1){ //システムメッセージのときはシステムメッセージを書く(色を変える)
-		puttext = "<div class='log'><div class='sys'>"+sendmsg+"</div></div>";
-		$("#msg_list").prepend(puttext);
-	}else if(issys==2){
-		puttext = "<div class='log'><div class='sys1'>"+sendmsg+"</div></div>";
-		$("#msg_list").prepend(puttext);
-	}else if(issys==3){
-		puttext = "<div class='log'><div class='sys2'>"+sendmsg+"</div></div>";
-		$("#msg_list").prepend(puttext);
-	}else if(issys==4){
-		puttext = "<div class='log'><div class='sys3'>"+sendmsg+"</div></div>";
-		$("#msg_list").prepend(puttext);
-	}else if(issys==5){
-		puttext = "<div class='log'><div class='sys4'>" + usrname + "さん："+ sendmsg + "</div><div class='date'>"+emittime+"</div></div>";
-		$("#msg_list").prepend(puttext);
-	}
-} 
+  var puttext = "";
+  if(usrname&&!issys){ //システムメッセージでなく、発言元が人間であれば通常メッセージ
+    puttext = "<div class='log'><div class='msg'>" + usrname + "さん："+ sendmsg + "</div><div class='date'>"+emittime+"</div></div>";
+    $("#msg_list").prepend(puttext);
+  }else if(issys==1){ //システムメッセージのときはシステムメッセージを書く(色を変える)
+    puttext = "<div class='log'><div class='sys'>"+sendmsg+"</div></div>";
+    $("#msg_list").prepend(puttext);
+  }else if(issys==2){
+    puttext = "<div class='log'><div class='sys1'>"+sendmsg+"</div></div>";
+    $("#msg_list").prepend(puttext);
+  }else if(issys==3){
+    puttext = "<div class='log'><div class='sys2'>"+sendmsg+"</div></div>";
+    $("#msg_list").prepend(puttext);
+  }else if(issys==4){
+    puttext = "<div class='log'><div class='sys3'>"+sendmsg+"</div></div>";
+    $("#msg_list").prepend(puttext);
+  }else if(issys==5){
+    puttext = "<div class='log'><div class='sys4'>" + usrname + "さん："+ sendmsg + "</div><div class='date'>"+emittime+"</div></div>";
+    $("#msg_list").prepend(puttext);
+  }
+}
 </script>
 <style>
-	div.msg {
-		text-align: left;
-	}
-	div.date {
-		text-align: right;
-		font-size:10pt;
-	}
+  div.msg {
+  text-align: left;
+  }
+  div.date {
+  text-align: right;
+  font-size:10pt;
+  }
 div.sys{
-		color:#ff0000;
-		text-align: left;
+  color:#ff0000;
+  text-align: left;
 }
 div.sys1{
-		color:#00ff00;
-		text-align: left;
+  color:#00ff00;
+  text-align: left;
 }
 div.sys2{
-		color:#0000ff;
-		text-align: left;
-		font-size:0.8em;
+  color:#0000ff;
+  text-align: left;
+  font-size:0.8em;
 }
 div.sys3{
-		color:#333333;
-		text-align: left;
-		font-size:0.8em;
-		border: double 1px #0000ff;
+  color:#333333;
+  text-align: left;
+  font-size:0.8em;
+  border: double 1px #0000ff;
 }
 div.sys4{
-		color:#666666;
-		text-align: left;
+  color:#666666;
+  text-align: left;
 }
 div.memberlist{
-	
+
 }
 input.num{
-	width:3em;
+  width:3em;
 }
 </style>
 </head>
@@ -329,18 +335,18 @@ input.num{
 <div id="role" style="background-color:#ffcccc"></div>
 <div id="daycount" style="background-color:#ccffcc"></div>
 <div id="chatstatus" style="background-color:#cccccc"></div>
-	<div id="msg_list" style="height:300px; overflow:auto;">
-	</div>
-	<form action='' method='post' onsubmit='return false;'><div id="roleplay" style="overflow:auto;height:100px">
-	</div></form>
-	<div id="sending"><form action='' method='post' onsubmit='return false;'>名前：<input type='text' class='text' style='' id='socketname'/><input type='submit' class='button' id='subbut' onclick='onsend();' value='入室する' /></form></div>
-	<div id="gamemember">
-		
-	</div>
-	<div id="memberlist">
-		
-	</div>
-	<div id="config" style="overflow:auto;">
-	</div>
+  <div id="msg_list" style="height:300px; overflow:auto;">
+  </div>
+  <form action='' method='post' onsubmit='return false;'><div id="roleplay" style="overflow:auto;height:100px">
+  </div></form>
+  <div id="sending"><form action='' method='post' onsubmit='return false;'>名前：<input type='text' class='text' style='' id='socketname'/><input type='submit' class='button' id='subbut' onclick='onsend();' value='入室する' /></form></div>
+  <div id="gamemember">
+
+  </div>
+  <div id="memberlist">
+
+  </div>
+  <div id="config" style="overflow:auto;">
+  </div>
 </body>
 </html>

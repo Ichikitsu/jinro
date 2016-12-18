@@ -6,7 +6,11 @@
   "dependencies": {
     "socket.io": "^1.7.1"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "eslint": "^3.12.2",
+    "eslint-config-airbnb-base": "^11.0.0",
+    "eslint-plugin-import": "^2.2.0"
+  },
   "scripts": {
     "start": "node app.js"
   },
