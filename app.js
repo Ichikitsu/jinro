@@ -16,9 +16,9 @@ const userRoom = {};// 接続しているclientのHash:ルーム名で格納
 const adminHash = {};// ルームマスターのHash:名前で格納
 const RoomList = ['room1', 'room2'];// まだ固定
 const countdown = {};// 後々使うかも
-const gamerole = {};// ゲームの情報を格納。
+const gamestates = {};// ゲームの情報を格納。
 // ルーム名:{daycount:ゲーム内の日数
-//　　　　  member:{ゲーム参加者(開始時点):{role:役職,
+//　　　　  member:{ゲーム参加者(開始時点,socketidで書く):{role:役職,
 //　　　　　　　　　　　　　　　　　　　　　　live:生きているかどうか(true/false);
 //                 }
 //　　　　　}で格納してる
@@ -28,7 +28,6 @@ io.sockets.on('connection', (socket) => { // Socket開始
   if (!userRoom[socket.id]) {
     socket.join('notjoinroom');
     socket.emit('roomlists', { rooms: 'あるよ' });
-    socket.emit('roommember', {});
     console.log(`${socket.id}がNJRにjoin`); // Debug notjoinroomにjoinした名前を垂れ流す
   } else {
     socket.connect();
@@ -80,138 +79,90 @@ io.sockets.on('connection', (socket) => { // Socket開始
   socket.on('config', (data) => {
 		// s.emit("config", {werewolf:$("#werewolf").val(),madman:$("#madman").val(),fox:$("#fox").val(),seer:$("#seer").val(),medium:$("#medium").val(),hunter:$("#hunter").val(),villager:$("#villager").val(),daytime:$("#daytime").val(),nighttime:$("#nighttime").val(),gmmode:isgmmode});
     let isgmmode = '';
+    let roomname = userRoom[socket.id];
     if (data.gmmode) { isgmmode = 'ON'; } else { isgmmode = 'OFF'; }
-    const numwerewolf = Number(data.werewolf);
-    const nummadman = Number(data.madman);
-    const numfox = Number(data.fox);
-    const numseer = Number(data.seer);
-    const nummedium = Number(data.medium);
-    const numhunter = Number(data.hunter);
-    const numvillager = Number(data.villager);
-    const numdaytime = Number(data.daytime);
-    const numnighttime = Number(data.nighttime);
-    const numplayer = numwerewolf + nummadman + numfox + numseer + nummedium + numhunter + numvillager;
-    const numwolfside = numwerewolf + nummadman;
-    const numfoxside = numfox;
-    const nummanside = numseer + nummedium + numhunter + numvillager;
-    if (in_array(userRoom[socket.id], userRoom) < numplayer) {
+    const members = socket.adapter.rooms[roomname].sockets;
+    let suc = game.start(roomname, members, data);
+
+    if (!suc) {
       socket.emit('S_to_C_message', { sendmsg: 'ルーム内の人数が配役より少ないため、チャットを開始できません。', issys: 1 });
     } else { // else ifで勝利条件判定trueの場合、だめって返すようにしたい
-      let roles = [];
-      pusharray(numwerewolf, 'werewolf', roles);
-      pusharray(nummadman, 'madman', roles);
-      pusharray(numfox, 'fox', roles);
-      pusharray(numseer, 'seer', roles);
-      pusharray(nummedium, 'medium', roles);
-      pusharray(numhunter, 'hunter', roles);
-      pusharray(numvillager, 'villager', roles);
-      console.log(roles);
-      roles = shuffle(roles);
-      console.log(roles);
-      const haiyaku = `配役 人狼${data.werewolf}/狂人${data.madman}/妖狐${data.fox}/占い師${data.seer}/霊能者${data.medium}/狩人${data.hunter}/村人${data.villager}<br />人狼陣営(狂人含め)：${numwolfside}人/妖狐陣営：${numfoxside}人/村人陣営：${nummanside}人/合計人数${numplayer}/昼時間${data.daytime}分/夜時間${data.nighttime}分/GMモード${isgmmode}`;
-      io.sockets.in(userRoom[socket.id]).emit('S_to_C_message', { sendmsg: haiyaku, issys: 4 });
-      let i = 0;
-      gamerole[userRoom[socket.id]] = {};
-      gamerole[userRoom[socket.id]].daycount = 1;
-      gamerole[userRoom[socket.id]].daytime = 3;
-      gamerole[userRoom[socket.id]].votecount = 1;
-      gamerole[userRoom[socket.id]].wolf = numwolfside;
-      gamerole[userRoom[socket.id]].fox = numfoxside;
-      gamerole[userRoom[socket.id]].man = nummanside;
-      gamerole[userRoom[socket.id]].wolfaction = {};
-      gamerole[userRoom[socket.id]].seeraction = {};
-      gamerole[userRoom[socket.id]].hunteraction = {};
-      gamerole[userRoom[socket.id]].votekill = {};
-      gamerole[userRoom[socket.id]].member = {};
-      gameHash[userRoom[socket.id]] = {};
-      for (member in socket.adapter.rooms[userRoom[socket.id]].sockets) {
-        gameHash[userRoom[socket.id]][member] = userHash[member];
-        gamerole[userRoom[socket.id]].member[member] = {};
-        gamerole[userRoom[socket.id]].member[member].role = roles[i];
-        gamerole[userRoom[socket.id]].member[member].live = true;
-        gamerole[userRoom[socket.id]].member[member].vote = {};
-        console.log(gamerole[userRoom[socket.id]].member[member]);
+      //let i = 0;
+      for (member in members) {
         const ismaster = (socket.id == member);
-        io.to(member).emit('gamestart', { role: roles[i], master: ismaster, yourname: userHash[member] });
-        console.log(`${member}：${roles[i]}`);
-        console.log(i);
-        console.log(ismaster);
-        i++;
-        if (numplayer <= i) { // ルームにいる人のほうが多かったら途中でbreak
-          break;
-        }
+        io.to(member).emit('gamestart', { role: gamestates[roomname].member[member].role, master: ismaster, yourname: userHash[member] });
+
+        //i++;
+        //if (numplayer <= i) { // ルームにいる人のほうが多かったら途中でbreak
+        //  break;
+        //}
       }
-      console.log(gameHash[userRoom[socket.id]]);
+
       const livingpeople = {};
       const playerroles = {};
-      for (member in gamerole[userRoom[socket.id]].member) {
-        livingpeople[userHash[member]] = gamerole[userRoom[socket.id]].member[member].live;
-        playerroles[userHash[member]] = gamerole[userRoom[socket.id]].member[member].role;
+      for (member in gamestates[userRoom[socket.id]].member) {
+        livingpeople[userHash[member]] = gamestates[userRoom[socket.id]].member[member].live;
+        playerroles[userHash[member]] = gamestates[userRoom[socket.id]].member[member].role;
       }
-      io.sockets.in(userRoom[socket.id]).emit('night', { daycount: gamerole[userRoom[socket.id]].daycount, wholive: livingpeople, playerrole: playerroles, daycount: gamerole[userRoom[socket.id]].daycount });
-      console.log('ゲーム開始時生存者');
-      console.log(livingpeople);
-      console.log('');
-      console.log(gamerole);
+      io.sockets.in(userRoom[socket.id]).emit('night', { daycount: gamestates[userRoom[socket.id]].daycount, wholive: livingpeople, playerrole: playerroles, daycount: gamestates[userRoom[socket.id]].daycount });
+
     }
   });
 
 	// 投票を受信
   socket.on('voting', (data) => {
-    if (data.votefor) { // 投票先がある場合
-      let votefor = 0;
-      for (member in gameHash[userRoom[socket.id]]) {
-        if (gamerole[userRoom[socket.id]].member[member].live && data.votefor == gameHash[userRoom[socket.id]][member]) { // 生きている場合
-          votefor = data.votefor;
-        }
-      }
-      if (votefor) {
-        if (gamerole[userRoom[socket.id]].member[socket.id].vote[gamerole[userRoom[socket.id]].daycount][gamerole[userRoom[socket.id]].votecount]) {
-          socket.emit('S_to_C_message', { sendmsg: `投票を${votefor}さんに変えました。`, issys: 2 });
-        } else {
-          socket.emit('S_to_C_message', { sendmsg: `${votefor}さんに投票しました。`, issys: 2 });
-        }
-        gamerole[userRoom[socket.id]].member[socket.id].vote[gamerole[userRoom[socket.id]].daycount][gamerole[userRoom[socket.id]].votecount] = votefor;
-				// gameroleのルームのメンバーの投票先の日数の投票回数のところを投票先にする
+    let performer = socket.id;
+    let room = userRoom[socket.id];
+
+
+    let suc = game.vote(room, performer, data);
+    if (suc.complete) { //投票が成功したか
+      if (suc.change) {
+        socket.emit('S_to_C_message', { sendmsg: `投票を${suc.votefor}さんに変えました。`, issys: 2 });
       } else {
-        socket.emit('S_to_C_message', { sendmsg: `${votefor}さんには投票できません。`, issys: 1 });
+        socket.emit('S_to_C_message', { sendmsg: `${suc.votefor}さんに投票しました。`, issys: 2 });
       }
-    } else { // ない場合
-      socket.emit('S_to_C_message', { sendmsg: '投票先を選んでください。', issys: 1 });
+				// gamestatesのルームのメンバーの投票先の日数の投票回数のところを投票先にする
+    } else {
+      if(suc.errortype==1){
+        socket.emit('S_to_C_message', { sendmsg: `${suc.votefor}さんには投票できません。`, issys: 1 });
+      }else{
+        socket.emit('S_to_C_message', { sendmsg: '投票先を選んでください。', issys: 1 });
+      }
     }
   });
 
 	// 役職の行動を受信
   socket.on('roleaction', (data) => {
     if (data.to) {
-      if (gamerole[userRoom[socket.id]].member[socket.id].role == 'werewolf') { // 送信元が人狼
-        gamerole[userRoom[socket.id]].wolfaction[gamerole[userRoom[socket.id]].daycount] = data.to; // 人狼のn日目の実行先を格納
+      if (gamestates[userRoom[socket.id]].member[socket.id].role == 'werewolf') { // 送信元が人狼
+        gamestates[userRoom[socket.id]].wolfaction[gamestates[userRoom[socket.id]].daycount] = data.to; // 人狼のn日目の実行先を格納
         for (member in socket.adapter.rooms[userRoom[socket.id]].sockets) {
-          if (gamerole[userRoom[socket.id]].member[member]) { // ゲームにいる場合
-            if (gamerole[userRoom[socket.id]].member[member].role == 'werewolf') { // memberが人狼のときだけメッセージを送る
-              io.to(member).emit('jobcomplete', { day: gamerole[userRoom[socket.id]].daycount, job: 'werewolf', to: data.to });
-              console.log({ day: gamerole[userRoom[socket.id]].daycount, job: 'werewolf', to: data.to });
+          if (gamestates[userRoom[socket.id]].member[member]) { // ゲームにいる場合
+            if (gamestates[userRoom[socket.id]].member[member].role == 'werewolf') { // memberが人狼のときだけメッセージを送る
+              io.to(member).emit('jobcomplete', { day: gamestates[userRoom[socket.id]].daycount, job: 'werewolf', to: data.to });
+              console.log({ day: gamestates[userRoom[socket.id]].daycount, job: 'werewolf', to: data.to });
             }
           }
         }
-      } else if (gamerole[userRoom[socket.id]].member[socket.id].role == 'seer') { // 送信元が占い師
-        gamerole[userRoom[socket.id]].seeraction[gamerole[userRoom[socket.id]].daycount] = data.to; // 占い師のn日目の実行先を格納
+      } else if (gamestates[userRoom[socket.id]].member[socket.id].role == 'seer') { // 送信元が占い師
+        gamestates[userRoom[socket.id]].seeraction[gamestates[userRoom[socket.id]].daycount] = data.to; // 占い師のn日目の実行先を格納
         let neko = '';
-        for (member in gamerole[userRoom[socket.id]].member) {
+        for (member in gamestates[userRoom[socket.id]].member) {
           if (userHash[member] == data.to) {
-            if (gamerole[userRoom[socket.id]].member[member].role == 'werewolf') {
+            if (gamestates[userRoom[socket.id]].member[member].role == 'werewolf') {
               neko = '●';
             } else {
               neko = '○';
             }
           }
         }
-        socket.emit('jobcomplete', { day: gamerole[userRoom[socket.id]].daycount, job: 'seer', result: neko, to: data.to });
-        console.log({ day: gamerole[userRoom[socket.id]].daycount, job: 'seer', result: neko, to: data.to });
-      } else if (gamerole[userRoom[socket.id]].member[socket.id].role == 'hunter') {
-        gamerole[userRoom[socket.id]].hunteraction[gamerole[userRoom[socket.id]].daycount] = data.to; // 狩人のn日目の実行先を格納
-        socket.emit('jobcomplete', { day: gamerole[userRoom[socket.id]].daycount, job: 'hunter', result: '', to: data.to });
-        console.log({ day: gamerole[userRoom[socket.id]].daycount, job: 'hunter', result: '' });
+        socket.emit('jobcomplete', { day: gamestates[userRoom[socket.id]].daycount, job: 'seer', result: neko, to: data.to });
+        console.log({ day: gamestates[userRoom[socket.id]].daycount, job: 'seer', result: neko, to: data.to });
+      } else if (gamestates[userRoom[socket.id]].member[socket.id].role == 'hunter') {
+        gamestates[userRoom[socket.id]].hunteraction[gamestates[userRoom[socket.id]].daycount] = data.to; // 狩人のn日目の実行先を格納
+        socket.emit('jobcomplete', { day: gamestates[userRoom[socket.id]].daycount, job: 'hunter', result: '', to: data.to });
+        console.log({ day: gamestates[userRoom[socket.id]].daycount, job: 'hunter', result: '' });
       }
     } else {
       socket.emit('S_to_C_message', { sendmsg: '実行先を選んでください。', issys: 1 });
@@ -221,25 +172,25 @@ io.sockets.on('connection', (socket) => { // Socket開始
     // 受信したメッセージをルームに送信 人狼ルーム、狐ルームとかに分けたほうがいいのでは？
   socket.on('C_to_S_message', (data) => {
     const msg = sanitize(data.sendmsg,0);
-    if (gamerole[userRoom[socket.id]]) { // ゲーム開始時
-      if (of_array(socket.id, gamerole[userRoom[socket.id]].member)) { // 発言者がゲームにいる場合
-        if (gamerole[userRoom[socket.id]].member[socket.id].live) { // 発言者が生きている場合
+    if (gamestates[userRoom[socket.id]]) { // ゲーム開始時
+      if (of_array(socket.id, gamestates[userRoom[socket.id]].member)) { // 発言者がゲームにいる場合
+        if (gamestates[userRoom[socket.id]].member[socket.id].live) { // 発言者が生きている場合
           console.log('発言者が生きている');
-          if (gamerole[userRoom[socket.id]].daytime == 3) { // 夜時間
-            if (gamerole[userRoom[socket.id]].member[socket.id].role == 'werewolf') { // 発言者が人狼
+          if (gamestates[userRoom[socket.id]].daytime == 3) { // 夜時間
+            if (gamestates[userRoom[socket.id]].member[socket.id].role == 'werewolf') { // 発言者が人狼
               for (member in socket.adapter.rooms[userRoom[socket.id]].sockets) { // ルーム内のメンバーを捜索
-                if (gamerole[userRoom[socket.id]].member[member]) { // ゲームにいる場合
-                  if (gamerole[userRoom[socket.id]].member[member].role == 'werewolf') { // memberが人狼のときだけメッセージを送る
+                if (gamestates[userRoom[socket.id]].member[member]) { // ゲームにいる場合
+                  if (gamestates[userRoom[socket.id]].member[member].role == 'werewolf') { // memberが人狼のときだけメッセージを送る
                     io.to(member).emit('S_to_C_message', { sendmsg: (`(人狼チャット)${msg}`), usrname: userHash[socket.id], emittime: genedate(), issys: 5 });
                   }
                 } else { // ゲームにいない場合
                   io.to(member).emit('S_to_C_message', { sendmsg: (`(人狼チャット)${msg}`), usrname: userHash[socket.id], emittime: genedate(), issys: 5 });
                 }
               }
-            } else if (gamerole[userRoom[socket.id]].member[socket.id].role == 'fox') { // 発言者が狐
+            } else if (gamestates[userRoom[socket.id]].member[socket.id].role == 'fox') { // 発言者が狐
               for (member in socket.adapter.rooms[userRoom[socket.id]].sockets) { // ルーム内のメンバーを捜索
-                if (gamerole[userRoom[socket.id]].member[member]) { // ゲームにいる場合
-                  if (gamerole[userRoom[socket.id]].member[member].role == 'fox') { // memberが狐のときだけメッセージを送る
+                if (gamestates[userRoom[socket.id]].member[member]) { // ゲームにいる場合
+                  if (gamestates[userRoom[socket.id]].member[member].role == 'fox') { // memberが狐のときだけメッセージを送る
                     io.to(member).emit('S_to_C_message', { sendmsg: (`(狐チャット)${msg}`), usrname: userHash[socket.id], emittime: genedate(), issys: 5 });
                   }
                 } else { // ゲームにいない場合
@@ -248,7 +199,7 @@ io.sockets.on('connection', (socket) => { // Socket開始
               }
             } else { // 発言者がオオカミ・狐以外は独り言
               for (member in socket.adapter.rooms[userRoom[socket.id]].sockets) { // ルーム内のメンバーを捜索
-                if (gamerole[userRoom[socket.id]].member[member]) { // ゲームにいる場合
+                if (gamestates[userRoom[socket.id]].member[member]) { // ゲームにいる場合
                   if (member == socket.id) { // socketと同じコードの人に送る
                     io.to(member).emit('S_to_C_message', { sendmsg: (`(独り言)${msg}`), usrname: userHash[socket.id], emittime: genedate(), issys: 5 });
                   }
@@ -263,14 +214,14 @@ io.sockets.on('connection', (socket) => { // Socket開始
         } else { // 発言者が死んでいる場合
           console.log('発言者が死んでいる');
           for (member in socket.adapter.rooms[userRoom[socket.id]].sockets) { // ルームの中のmemberを捜索
-            if (!of_array(member, gamerole[userRoom[socket.id]].member)) { // memberがゲームにいない場合だけ返す
+            if (!of_array(member, gamestates[userRoom[socket.id]].member)) { // memberがゲームにいない場合だけ返す
               io.to(member).emit('S_to_C_message', { sendmsg: (`(霊界チャット)${msg}`), usrname: userHash[socket.id], emittime: genedate(), issys: 5 });
             }
           }
         }
       } else { // 発言者がゲームにいない場合
         for (member in socket.adapter.rooms[userRoom[socket.id]].sockets) { // ルームの中のmemberを捜索
-          if (!of_array(member, gamerole[userRoom[socket.id]].member)) { // memberがゲームにいない場合だけ返す いらんのでは？
+          if (!of_array(member, gamestates[userRoom[socket.id]].member)) { // memberがゲームにいない場合だけ返す いらんのでは？
             io.to(member).emit('S_to_C_message', { sendmsg: (`(霊界チャット)${msg}`), usrname: userHash[socket.id], emittime: genedate(), issys: 5 });
           }
         }
@@ -295,27 +246,27 @@ io.sockets.on('connection', (socket) => { // Socket開始
       let bite = '';
       let see = '';
       let guard = '';
-      for (member in gamerole[userRoom[socket.id]].member) {
-        if (userHash[member] == gamerole[userRoom[socket.id]].wolfaction[gamerole[userRoom[socket.id]].daycount]) { // 噛み先
+      for (member in gamestates[userRoom[socket.id]].member) {
+        if (userHash[member] == gamestates[userRoom[socket.id]].wolfaction[gamestates[userRoom[socket.id]].daycount]) { // 噛み先
           bite = member;
         }
-        if (userHash[member] == gamerole[userRoom[socket.id]].seeraction[gamerole[userRoom[socket.id]].daycount]) { // 占い先
+        if (userHash[member] == gamestates[userRoom[socket.id]].seeraction[gamestates[userRoom[socket.id]].daycount]) { // 占い先
           see = member;
         }
-        if (userHash[member] == gamerole[userRoom[socket.id]].hunteraction[gamerole[userRoom[socket.id]].daycount]) { // 噛み先
+        if (userHash[member] == gamestates[userRoom[socket.id]].hunteraction[gamestates[userRoom[socket.id]].daycount]) { // 噛み先
           guard = member;
         }
       }
 
       if (bite) {
-        if (bite != guard && gamerole[userRoom[socket.id]].member[bite].role != 'fox') { // 狩人の守護先と噛み先が違い狐でない場合
-          gamerole[userRoom[socket.id]].member[bite].live = false;
+        if (bite != guard && gamestates[userRoom[socket.id]].member[bite].role != 'fox') { // 狩人の守護先と噛み先が違い狐でない場合
+          gamestates[userRoom[socket.id]].member[bite].live = false;
           deaths[userHash[bite]] = true;
         }
       }
       if (see) {
-        if (gamerole[userRoom[socket.id]].member[see].role == 'fox') { // 占い先が狐のとき
-          gamerole[userRoom[socket.id]].member[see].live = false;
+        if (gamestates[userRoom[socket.id]].member[see].role == 'fox') { // 占い先が狐のとき
+          gamestates[userRoom[socket.id]].member[see].live = false;
           deaths[userHash[see]] = true;
         }
       }
@@ -335,17 +286,17 @@ io.sockets.on('connection', (socket) => { // Socket開始
 
       io.sockets.in(userRoom[socket.id]).emit('S_to_C_message', { sendmsg: morningmsg, issys: 4 });
 
-      gamerole[userRoom[socket.id]].daytime = 0;
-      gamerole[userRoom[socket.id]].daycount++;
+      gamestates[userRoom[socket.id]].daytime = 0;
+      gamestates[userRoom[socket.id]].daycount++;
       const livingpeople = {};
       const sidecount = { wolf: 0, fox: 0, man: 0 };
-      for (member in gamerole[userRoom[socket.id]].member) {
-        livingpeople[gameHash[userRoom[socket.id]][member]] = gamerole[userRoom[socket.id]].member[member].live;
-        if (gamerole[userRoom[socket.id]].member[member].live && (gamerole[userRoom[socket.id]].member[member].role == 'werewolf')) {
+      for (member in gamestates[userRoom[socket.id]].member) {
+        livingpeople[gameHash[userRoom[socket.id]][member]] = gamestates[userRoom[socket.id]].member[member].live;
+        if (gamestates[userRoom[socket.id]].member[member].live && (gamestates[userRoom[socket.id]].member[member].role == 'werewolf')) {
           sidecount.wolf++;
-        } else if (gamerole[userRoom[socket.id]].member[member].live && (gamerole[userRoom[socket.id]].member[member].role == 'fox')) {
+        } else if (gamestates[userRoom[socket.id]].member[member].live && (gamestates[userRoom[socket.id]].member[member].role == 'fox')) {
           sidecount.fox++;
-        } else if (gamerole[userRoom[socket.id]].member[member].live) {
+        } else if (gamestates[userRoom[socket.id]].member[member].live) {
           sidecount.man++;
         }
       }
@@ -356,17 +307,17 @@ io.sockets.on('connection', (socket) => { // Socket開始
       console.log(sidecount);
       console.log(judgement);
 
-      io.sockets.in(userRoom[socket.id]).emit('morning', { daycount: gamerole[userRoom[socket.id]].daycount, wholive: livingpeople });
+      io.sockets.in(userRoom[socket.id]).emit('morning', { daycount: gamestates[userRoom[socket.id]].daycount, wholive: livingpeople });
 
 
       console.log('朝にさせた、朝のゲームの状況');
-      console.log(gamerole[userRoom[socket.id]]);
+      console.log(gamestates[userRoom[socket.id]]);
       console.log('人狼');
-      console.log(gamerole[userRoom[socket.id]].wolfaction);
+      console.log(gamestates[userRoom[socket.id]].wolfaction);
       console.log('占い師');
-      console.log(gamerole[userRoom[socket.id]].seeraction);
+      console.log(gamestates[userRoom[socket.id]].seeraction);
       console.log('狩人');
-      console.log(gamerole[userRoom[socket.id]].hunteraction);
+      console.log(gamestates[userRoom[socket.id]].hunteraction);
       console.log('以上');
     }
   });
@@ -375,18 +326,18 @@ io.sockets.on('connection', (socket) => { // Socket開始
   socket.on('envote', () => {
     console.log('投票時間にさせようとしている');
     if (of_array(socket.id, adminHash)) {
-      gamerole[userRoom[socket.id]].daytime = 1;
-      gamerole[userRoom[socket.id]].votecount = 1;
+      gamestates[userRoom[socket.id]].daytime = 1;
+      gamestates[userRoom[socket.id]].votecount = 1;
       const livingpeople = {};
       const sidecount = { wolf: 0, fox: 0, man: 0 };
-      for (member in gamerole[userRoom[socket.id]].member) {
-        gamerole[userRoom[socket.id]].member[member].vote[gamerole[userRoom[socket.id]].daycount] = { 1: '' };// 日数の投票先1回目を空にする
-        livingpeople[gameHash[userRoom[socket.id]][member]] = gamerole[userRoom[socket.id]].member[member].live;
-        if (gamerole[userRoom[socket.id]].member[member].live && (gamerole[userRoom[socket.id]].member[member].role == 'werewolf')) {
+      for (member in gamestates[userRoom[socket.id]].member) {
+        gamestates[userRoom[socket.id]].member[member].vote[gamestates[userRoom[socket.id]].daycount] = { 1: '' };// 日数の投票先1回目を空にする
+        livingpeople[gameHash[userRoom[socket.id]][member]] = gamestates[userRoom[socket.id]].member[member].live;
+        if (gamestates[userRoom[socket.id]].member[member].live && (gamestates[userRoom[socket.id]].member[member].role == 'werewolf')) {
           sidecount.wolf++;
-        } else if (gamerole[userRoom[socket.id]].member[member].live && (gamerole[userRoom[socket.id]].member[member].role == 'fox')) {
+        } else if (gamestates[userRoom[socket.id]].member[member].live && (gamestates[userRoom[socket.id]].member[member].role == 'fox')) {
           sidecount.fox++;
-        } else if (gamerole[userRoom[socket.id]].member[member].live) {
+        } else if (gamestates[userRoom[socket.id]].member[member].live) {
           sidecount.man++;
         }
       }
@@ -397,7 +348,7 @@ io.sockets.on('connection', (socket) => { // Socket開始
       console.log(sidecount);
       console.log(judgement);
 
-      io.sockets.in(userRoom[socket.id]).emit('vote', { daycount: gamerole[userRoom[socket.id]].daycount, wholive: livingpeople });
+      io.sockets.in(userRoom[socket.id]).emit('vote', { daycount: gamestates[userRoom[socket.id]].daycount, wholive: livingpeople });
     }
   });
   socket.on('envoteend', () => {
@@ -406,14 +357,14 @@ io.sockets.on('connection', (socket) => { // Socket開始
       const livingpeople = {};
       const votelist = {};
       const sidecount = { wolf: 0, fox: 0, man: 0 };
-      for (member in gamerole[userRoom[socket.id]].member) {
-        livingpeople[gameHash[userRoom[socket.id]][member]] = gamerole[userRoom[socket.id]].member[member].live;
-        votelist[member] = gamerole[userRoom[socket.id]].member[member].vote[gamerole[userRoom[socket.id]].daycount][gamerole[userRoom[socket.id]].votecount];
-        if (gamerole[userRoom[socket.id]].member[member].live && (gamerole[userRoom[socket.id]].member[member].role == 'werewolf')) {
+      for (member in gamestates[userRoom[socket.id]].member) {
+        livingpeople[gameHash[userRoom[socket.id]][member]] = gamestates[userRoom[socket.id]].member[member].live;
+        votelist[member] = gamestates[userRoom[socket.id]].member[member].vote[gamestates[userRoom[socket.id]].daycount][gamestates[userRoom[socket.id]].votecount];
+        if (gamestates[userRoom[socket.id]].member[member].live && (gamestates[userRoom[socket.id]].member[member].role == 'werewolf')) {
           sidecount.wolf++;
-        } else if (gamerole[userRoom[socket.id]].member[member].live && (gamerole[userRoom[socket.id]].member[member].role == 'fox')) {
+        } else if (gamestates[userRoom[socket.id]].member[member].live && (gamestates[userRoom[socket.id]].member[member].role == 'fox')) {
           sidecount.fox++;
-        } else if (gamerole[userRoom[socket.id]].member[member].live) {
+        } else if (gamestates[userRoom[socket.id]].member[member].live) {
           sidecount.man++;
         }
       }
@@ -437,18 +388,18 @@ io.sockets.on('connection', (socket) => { // Socket開始
         }
       }
       if (mostcount == 0) {
-        if (gamerole[userRoom[socket.id]].member[mostvoteplayer]) { // ゲーム参加者だった場合
-          gamerole[userRoom[socket.id]].member[mostvoteplayer].live = false;
+        if (gamestates[userRoom[socket.id]].member[mostvoteplayer]) { // ゲーム参加者だった場合
+          gamestates[userRoom[socket.id]].member[mostvoteplayer].live = false;
         }
-        gamerole[userRoom[socket.id]].votekill[gamerole[userRoom[socket.id]].daycount] = mostvoteplayer;
-        io.sockets.in(userRoom[socket.id]).emit('S_to_C_message', { sendmsg: `${gamerole[userRoom[socket.id]].daycount}日目${gamerole[userRoom[socket.id]].votecount}回目の投票結果 ${userHash[mostvoteplayer]}さんが処刑されます。<br />${votemsg}`, issys: 4 });
-        io.sockets.in(userRoom[socket.id]).emit('voteend', { daycount: gamerole[userRoom[socket.id]].daycount, wholive: livingpeople });
-        gamerole[userRoom[socket.id]].daytime = 2;
+        gamestates[userRoom[socket.id]].votekill[gamestates[userRoom[socket.id]].daycount] = mostvoteplayer;
+        io.sockets.in(userRoom[socket.id]).emit('S_to_C_message', { sendmsg: `${gamestates[userRoom[socket.id]].daycount}日目${gamestates[userRoom[socket.id]].votecount}回目の投票結果 ${userHash[mostvoteplayer]}さんが処刑されます。<br />${votemsg}`, issys: 4 });
+        io.sockets.in(userRoom[socket.id]).emit('voteend', { daycount: gamestates[userRoom[socket.id]].daycount, wholive: livingpeople });
+        gamestates[userRoom[socket.id]].daytime = 2;
       } else {
-        io.sockets.in(userRoom[socket.id]).emit('S_to_C_message', { sendmsg: `${gamerole[userRoom[socket.id]].daycount}日目${gamerole[userRoom[socket.id]].votecount}回目の投票結果 同票の方がいます。<br />${votemsg}`, issys: 4 });
-        io.sockets.in(userRoom[socket.id]).emit('vote', { daycount: gamerole[userRoom[socket.id]].daycount, wholive: livingpeople });
-        gamerole[userRoom[socket.id]].votecount++;
-        io.sockets.in(userRoom[socket.id]).emit('S_to_C_message', { sendmsg: `${gamerole[userRoom[socket.id]].daycount}日目${gamerole[userRoom[socket.id]].votecount}回目の投票を開始します。`, issys: 2 });
+        io.sockets.in(userRoom[socket.id]).emit('S_to_C_message', { sendmsg: `${gamestates[userRoom[socket.id]].daycount}日目${gamestates[userRoom[socket.id]].votecount}回目の投票結果 同票の方がいます。<br />${votemsg}`, issys: 4 });
+        io.sockets.in(userRoom[socket.id]).emit('vote', { daycount: gamestates[userRoom[socket.id]].daycount, wholive: livingpeople });
+        gamestates[userRoom[socket.id]].votecount++;
+        io.sockets.in(userRoom[socket.id]).emit('S_to_C_message', { sendmsg: `${gamestates[userRoom[socket.id]].daycount}日目${gamestates[userRoom[socket.id]].votecount}回目の投票を開始します。`, issys: 2 });
       }
       console.log(votelist);
       console.log(votedcount);
@@ -460,17 +411,17 @@ io.sockets.on('connection', (socket) => { // Socket開始
     if (of_array(socket.id, adminHash)) {
       const livingpeople = {};
       const playerroles = {};
-      gamerole[userRoom[socket.id]].daytime = 3;
-      gamerole[userRoom[socket.id]].votecount = 0;
+      gamestates[userRoom[socket.id]].daytime = 3;
+      gamestates[userRoom[socket.id]].votecount = 0;
       const sidecount = { wolf: 0, fox: 0, man: 0 };
-      for (member in gamerole[userRoom[socket.id]].member) {
-        livingpeople[gameHash[userRoom[socket.id]][member]] = gamerole[userRoom[socket.id]].member[member].live;
-        playerroles[gameHash[userRoom[socket.id]][member]] = gamerole[userRoom[socket.id]].member[member].role;
-        if (gamerole[userRoom[socket.id]].member[member].live && (gamerole[userRoom[socket.id]].member[member].role == 'werewolf')) {
+      for (member in gamestates[userRoom[socket.id]].member) {
+        livingpeople[gameHash[userRoom[socket.id]][member]] = gamestates[userRoom[socket.id]].member[member].live;
+        playerroles[gameHash[userRoom[socket.id]][member]] = gamestates[userRoom[socket.id]].member[member].role;
+        if (gamestates[userRoom[socket.id]].member[member].live && (gamestates[userRoom[socket.id]].member[member].role == 'werewolf')) {
           sidecount.wolf++;
-        } else if (gamerole[userRoom[socket.id]].member[member].live && (gamerole[userRoom[socket.id]].member[member].role == 'fox')) {
+        } else if (gamestates[userRoom[socket.id]].member[member].live && (gamestates[userRoom[socket.id]].member[member].role == 'fox')) {
           sidecount.fox++;
-        } else if (gamerole[userRoom[socket.id]].member[member].live) {
+        } else if (gamestates[userRoom[socket.id]].member[member].live) {
           sidecount.man++;
         }
       }
@@ -480,15 +431,15 @@ io.sockets.on('connection', (socket) => { // Socket開始
       }
 
       let mediumresult = '○';
-      const votekilled = gamerole[userRoom[socket.id]].votekill[gamerole[userRoom[socket.id]].daycount];
-      const votekilledrole = gamerole[userRoom[socket.id]].member[votekilled].role;
+      const votekilled = gamestates[userRoom[socket.id]].votekill[gamestates[userRoom[socket.id]].daycount];
+      const votekilledrole = gamestates[userRoom[socket.id]].member[votekilled].role;
       if (votekilledrole == 'werewolf') {
         mediumresult = '●';
       }
       console.log(sidecount);
       console.log(judgement);
 
-      io.sockets.in(userRoom[socket.id]).emit('night', { daycount: gamerole[userRoom[socket.id]].daycount, wholive: livingpeople, playerrole: playerroles, medium: mediumresult, mediumto: userHash[votekilled] });
+      io.sockets.in(userRoom[socket.id]).emit('night', { daycount: gamestates[userRoom[socket.id]].daycount, wholive: livingpeople, playerrole: playerroles, medium: mediumresult, mediumto: userHash[votekilled] });
     }
   });
 
@@ -502,7 +453,7 @@ io.sockets.on('connection', (socket) => { // Socket開始
       io.sockets.in(leaveroom).emit('errmsg', { sendmsg: msg, issys: 1 });
       delete userHash[socket.id];
       delete userRoom[socket.id];
-      delete gamerole[socket.id];
+      delete gamestates[socket.id];
       delete gameHash[socket.id];
       delete adminHash[socket.id];
       console.log(userRoom);
@@ -511,13 +462,13 @@ io.sockets.on('connection', (socket) => { // Socket開始
 
       var msg = `${userHash[socket.id]}さんが退出しました`;
       var leaveroom = userRoom[socket.id];
-      if (gamerole[leaveroom]) { // ゲームが開始していた場合
+      if (gamestates[leaveroom]) { // ゲームが開始していた場合
         console.log('開始してる');
-        if (gamerole[leaveroom].member[socket.id]) { // ゲーム参加者だった場合
+        if (gamestates[leaveroom].member[socket.id]) { // ゲーム参加者だった場合
           console.log('参加者');
-          if (gamerole[leaveroom].member[socket.id].live) { // 生存者だった場合
+          if (gamestates[leaveroom].member[socket.id].live) { // 生存者だった場合
             console.log('生存者');
-            gamerole[leaveroom].member[socket.id].live = false;
+            gamestates[leaveroom].member[socket.id].live = false;
             msg = `${userHash[socket.id]}さんが突然死しました。(切断)`;
           }
         }
@@ -548,6 +499,124 @@ io.sockets.on('connection', (socket) => { // Socket開始
   });
 }); // Socket終了
 
+
+const game = {
+  start:function(room,members,config){
+
+    const numwerewolf = Number(config.werewolf);
+    const nummadman = Number(config.madman);
+    const numfox = Number(config.fox);
+    const numseer = Number(config.seer);
+    const nummedium = Number(config.medium);
+    const numhunter = Number(config.hunter);
+    const numvillager = Number(config.villager);
+    const numdaytime = Number(config.daytime);
+    const numnighttime = Number(config.nighttime);
+    const numplayer = numwerewolf + nummadman + numfox + numseer + nummedium + numhunter + numvillager;
+    const numwolfside = numwerewolf + nummadman;
+    const numfoxside = numfox;
+    const nummanside = numseer + nummedium + numhunter + numvillager;
+    if (Object.keys(members).length < numplayer) {
+      return false;
+    } else { // else ifで勝利条件判定trueの場合、だめって返すようにしたい
+      let roles = [];
+      pusharray(numwerewolf, 'werewolf', roles);
+      pusharray(nummadman, 'madman', roles);
+      pusharray(numfox, 'fox', roles);
+      pusharray(numseer, 'seer', roles);
+      pusharray(nummedium, 'medium', roles);
+      pusharray(numhunter, 'hunter', roles);
+      pusharray(numvillager, 'villager', roles);
+      console.log(roles);
+      roles = shuffle(roles);
+      console.log(roles);
+      //const haiyaku = `配役 人狼${data.werewolf}/狂人${data.madman}/妖狐${data.fox}/占い師${data.seer}/霊能者${data.medium}/狩人${data.hunter}/村人${data.villager}<br />人狼陣営(狂人含め)：${numwolfside}人/妖狐陣営：${numfoxside}人/村人陣営：${nummanside}人/合計人数${numplayer}/昼時間${data.daytime}分/夜時間${data.nighttime}分/GMモード${isgmmode}`;
+      //io.sockets.in(userRoom[socket.id]).emit('S_to_C_message', { sendmsg: haiyaku, issys: 4 });
+      gamestates[room] = {};
+      gamestates[room].daycount = 1;
+      gamestates[room].daytime = 3;
+      gamestates[room].votecount = 1;
+      gamestates[room].wolf = numwolfside;
+      gamestates[room].fox = numfoxside;
+      gamestates[room].man = nummanside;
+      gamestates[room].wolfaction = {};
+      gamestates[room].seeraction = {};
+      gamestates[room].hunteraction = {};
+      gamestates[room].votekill = {};
+      gamestates[room].member = {};
+      gameHash[room] = {};
+      let i = 0;  //ここは後々ルームマスターがゲームに参加するメンバーを選べるようにしたい
+      for (member in members) {
+        gamestates[room].member[member] = {
+          role:roles[i],
+          live:true,
+          vote:{},
+          name:userHash[member]
+        };
+        //console.log(gamestates[userRoom[socket.id]].member[member]);
+        //const ismaster = (master == member);
+        //io.to(member).emit('gamestart', { role: roles[i], master: ismaster, yourname: userHash[member] });
+        //console.log(`${member}：${roles[i]}`);
+        //console.log(i);
+        //console.log(ismaster);
+        i++;
+        if (numplayer <= i) { // ルームにいる人のほうが多かったら途中でbreak
+          break;
+        }
+      }
+      return true;
+      //console.log(gameHash[userRoom[socket.id]]);
+      //const livingpeople = {};
+      //const playerroles = {};
+      //for (member in gamestates[userRoom[socket.id]].member) {
+      //  livingpeople[userHash[member]] = gamestates[userRoom[socket.id]].member[member].live;
+      //  playerroles[userHash[member]] = gamestates[userRoom[socket.id]].member[member].role;
+      //}
+      //io.sockets.in(userRoom[socket.id]).emit('night', { daycount: gamestates[userRoom[socket.id]].daycount, wholive: livingpeople, playerrole: playerroles, daycount: gamestates[userRoom[socket.id]].daycount });
+      //console.log('ゲーム開始時生存者');
+      //console.log(livingpeople);
+      //console.log('');
+      //console.log(gamestates);
+    }
+  },
+  vote:function (room, performer, data) { //ユーザーの投票
+    let days = gamestates[room].daycount;
+    let votecount = gamestates[room].votecount;
+    let members = gamestates[room].member;
+
+    if (data.votefor) { // 投票先がある場合
+      let votefor = 0;
+
+      for (member in members) {
+        if (gamestates[room].member[member].live && data.votefor == gameHash[room].member[member]) { // 生きている場合
+          votefor = data.votefor;
+        }
+      }
+
+      if (votefor) { //投票先がある
+        if (gamestates[room].member[performer].vote[days][votecount]) { //すでに投票している
+          //socket.emit('S_to_C_message', { sendmsg: `投票を${votefor}さんに変えました。`, issys: 2 });
+          return {complete:true, change:true, votefor:votefor};
+          console.log(`${performer} has revoted for ${votefor}`);
+        } else { //初めての投票
+          //socket.emit('S_to_C_message', { sendmsg: `${votefor}さんに投票しました。`, issys: 2 });
+          return {complete:true, change:false, votefor:votefor};
+          console.log(`${performer} has voted for ${votefor}`);
+        }
+        gamestates[room].member[performer].vote[days][votecount] = votefor;
+				// gamestatesのルームのメンバーの投票先の日数の投票回数のところを投票先にする
+      } else { //投票先がない
+        //socket.emit('S_to_C_message', { sendmsg: `${votefor}さんには投票できません。`, issys: 1 });
+        return {complete:false, change:false, votefor:votefor, errortype:1};
+        console.log(`Error We cannot accept ${performer} s voting for ${votefor}`);
+      }
+    } else { //投票先がない場合
+      return {complete:false, change:false, votefor:votefor, errortype:2};
+      console.log(`Error ${performer} must choose who to vote for`);
+    }
+  }
+
+};
 
 // 2桁に直す
 const toDoubleDigits = function (num) {
